@@ -1,0 +1,144 @@
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<title>Test-Time Anchoring for Discrete Diffusion Posterior Sampling</title>
+<link href="./style.css" rel="stylesheet">
+<!-- <script type="text/javascript" src="./DreamBooth_files/jquery.js"></script> -->
+</head>
+
+<body>
+<div class="content">
+  <h1><strong>Test-Time Anchoring for Discrete Diffusion Posterior Sampling</strong></h1>
+  <!-- <h2 style="text-align:center;">CVPR 2024</h2> -->
+  <p id="authors">
+    <a href="https://liturout.github.io/" style="color:blue;">Litu Rout<sup>1,2</sup></a>
+    <a href="https://scholar.google.com/citations?user=3Rf3Q7UAAAAJ&hl=en" style="color:blue;">Andreas Lugmayr<sup>1</sup></a>
+    <a href="https://www.yasamin.page/" style="color:blue;">Yasamin Jafarian<sup>1</sup></a>
+    <a href="" style="color:blue;">Srivatsan Varadharajan<sup>1</sup></a>
+    <br>
+    <a href="https://caramanis.github.io/" style="color:blue;">Constantine Caramanis<sup>2</sup></a>
+    <a href="https://sites.google.com/view/sanjay-shakkottai/home" style="color:blue;">Sanjay Shakkottai<sup>2</sup></a>
+    <a href="https://www.irakemelmacher.com/" style="color:blue;">Ira Kemelmacher-Shlizerman<sup>1</sup></a>
+    <span style="font-size: 20px"><br>
+        <b><sup>1</sup> Google </b>&nbsp;&nbsp;&nbsp;&nbsp;
+        <b><sup>2</sup> UT Austin<br> </b>
+    </span>
+  </p>
+  <font size="+2">
+    <p style="text-align: center;">
+      <a href="./data/aps.pdf" target="_blank">[Paper]</a> &nbsp;&nbsp;&nbsp;&nbsp;
+      <a href="" target="_blank">[ArXiv]</a> &nbsp;&nbsp;&nbsp;&nbsp;
+      <a href="https://github.com/LituRout/APS" target="_blank">[Code (Coming Soon)]</a>&nbsp;&nbsp;&nbsp;&nbsp;
+    </p>
+  </font>
+  <img src="./data/teaser-v1.png" class="teaser-gif" style="width:100%;">    
+  <p>
+    We introduce <span style="font-weight: bold;">Anchored Posterior Sampling (APS)</span> for masked diffusion foundation models, built on two key innovations: (i) quantized expectation, which provides gradient-like guidance for discrete diffusion with purely discrete embedding space, and (ii) anchored remasking, which enables adaptive decoding during inference. Our method supports a variety of linear and nonlinear image restoration tasks (left three columns), as well as mask-based garment styling and reference-guided style transfer (last column).
+  </p>
+</div>
+
+
+
+<div class="content">
+  <h2 style="text-align:center;">Abstract</h2>
+  <p>We study the problem of posterior sampling using pretrained discrete diffusion foundation models, aiming to recover images from noisy measurements without retraining task-specific models. While diffusion models have achieved remarkable success in generative modeling, most advances rely on continuous Gaussian diffusion. In contrast, discrete diffusion offers a unified framework for jointly modeling categorical data such as text and images. Beyond unification, discrete diffusion provides faster inference, finer control, and principled training-free Bayesian inference, making it particularly well-suited for posterior sampling. However, existing approaches to discrete diffusion posterior sampling face severe challenges: derivative-free guidance yields sparse signals, continuous relaxations limit applicability, and split Gibbs samplers suffer from the curse of dimensionality. To overcome these limitations, we introduce <span style="font-weight: bold;">Anchored Posterior Sampling (APS)</span> formasked diffusion foundation models, built on two key innovations—<span style="font-weight: bold;">quantized expectation</span> for gradient-like guidance in discrete embedding space, and <span style="font-weight: bold;">anchored remasking</span> for adaptive decoding. Our approach achieves state-of-the-art performance among discrete diffusion samplers across linear and nonlinear inverse problems on the standard benchmarks. We further demonstrate training-free stylization and text-guided editing using our sampler.</p>
+</div>
+
+
+<div class="content">
+    <h2>Contributions</h2>
+    <ul>      
+      <li>
+      <span style="font-weight: bold;">Theoretical results</span>: we derive (i) a training upper bound, LDDPS (Theorem 3.1), that integrates measurements into the reverse diffusion process, and (ii) a test-time bound, LAPS (Theorem 3.2), that reuses a pretrained denoiser without expensive retraining per downstream task (§3).</li>
+      <p></p>
+      <li>
+        <span style="font-weight: bold;">Quantized expectation</span>: a novel strategy to update all entries of the conditional probability table, enabling strong gradient-like guidance in the discrete embedding space (§3.2.1).
+      </li>
+      <p></p>
+      <li>
+        <span style="font-weight: bold;">Anchored remasking</span>: an adaptive decoding strategy that unmasks “anchor” tokens early in the reverse process, better utilizing model’s capacity to decode remaining tokens (§3.2.2).
+      </li>
+      <p></p>
+      <li>
+        <span style="font-weight: bold;">Extensive experiments</span>: comprehensive evaluation on linear (super resolution, Gaussian deblurring, inpainting, motion deblur) and nonlinear (HDR, nonlinear deblurring) inverse problems on FFHQ and ImageNet, where our method achieves up to 35.82% LPIPS and 10.94% PSNR gains on ImageNet super resolution (4×), and 31.36% LPIPS and 7.05% PSNR gains on FFHQ, over the prior state-of-the-art discrete sampler. We further demonstrate training-free stylization enabled by our discrete posterior sampler, highlighting flexibility beyond inverse problems (§4).
+      </li>
+    </ul>        
+    </div>
+
+  <div id="results" class="content">
+  <h2>Method: Test-Time Anchored Posterior Sampling</h2>
+  <h3>Theoretical Results</h3>
+  <p>
+    <span style="font-weight: bold;">Theorem 3.1</span> provides a principled training criterion for discrete posterior samplers. The likelihood-based tilt <span style="font-weight: bold;">log q(y|x<sub>ϕ</sub>(Z<sub>t(i)</sub>))</span> enforces measurement consistency When <span style="font-weight: bold;">y</span> is absent, the tilting terms vanish and the objective reduces to the standard masked diffusion NELBO (5). The negative cross-entropy term is zero for unmasked tokens and gets supervision for masked tokens, with weights determined by the noise schedule.
+  </p>
+  <img class="summary-img" src="./data/theorem-ddps.png" style="width:70%;">
+  <p>
+    For retraining, one can minimize <span style="font-weight: bold;">L<sub>DDPS</sub>(x, y; ϕ)</span> with respect to <span style="font-weight: bold;">ϕ</span> to obtain a discrete posterior sampler. In practice, however, retraining a large-scale foundation model per task is often infeasible due to excessive compute requirement and lack of training data. We therefore focus on the training-free case.</p>
+  <img class="summary-img" src="./data/theorem-aps.png" style="width:70%;">
+  <div style="margin-top: 1em; padding: 0.5em; background-color: #fef3c7; border-left: 5px solid #f59e0b;">
+    <strong style="font-size: 1.1em;">
+      <p>
+        In summary, retraining a new network <span style="font-weight: bold;">ϕ</span> for every task would require backpropagation through massive denoisers (e.g., 8B parameters in MMaDA), which is computationally prohibitive. Our theoretical results show that posterior sampling can be done efficiently by reusing the pretrained model and optimizing only lightweight parameters at test time. Next, we introduce two key ingredients—Quantized Expectation (§3.2.1) and Anchored Remasking (§3.2.2)—that make this trainingfree posterior sampling practically implementable. These two ideas together form our Algorithm 1: Anchored Posterior Sampling (APS); please see Appendix B.2 for a detailed discussion.
+      </p>
+    </strong>
+    </div>
+    <h3>Quantized Expectation</h3>
+    <p>
+    </p>
+    <h3>Anchored Remasking</h3>
+    <p>
+
+    </p>
+  </div>
+
+  <div class="content">        
+    <h2>Experiments: Test-Time Anchored Posterior Sampling</h2>
+    <h3>Results on Linear Inverse Problems</h3>
+    <p>
+      Test perplexities (PPL↓) on LM1B and OWT. †Reported in (Sahoo et al., 2024). <strong>Bold: Best diffusion method</strong>. We retrain AR and MDLM to match performance reported in original papers. Our method outperforms previous diffusion language models using the same number of training tokens.          
+    </p>    
+    <img class="summary-img" src="./data/adlm-gen-lm1b-owt.png" style="width:85%;"> 
+    <br>
+    <h3>Results on General Inverse Problems</h3>
+    <p>
+      GPT2-Large perplexities (PPL; ↓) on OWT (524B tokens). We evaluate ADLM with the locked-in and remasking samplers each with 1000 steps.          
+    </p>    
+    <img class="summary-img" src="./data/adlm-gen-text-quality.png" style="width:30%;"> 
+    <br>    
+    <h3>Results on Reference-Based Stylization</h3>
+    <p>
+      Zero-shot validation perplexities (↓) of models trained on 524B tokens from OWT. ADLM achieves a new state-of-the-art among diffusion language models and outperforms autoregressive (AR) models on three benchmarks: Lambada, PubMed, and ArXiv. All models use 1024 NFEs.          
+    </p>    
+    <img class="summary-img" src="./data/adlm-zero-shot-eval.png" style="width:75%;"> 
+    <br>    
+    <h3>Results on Text-Guided Block Inpainting</h3>
+    <p>
+      Generative perplexities evaluated over 1024 unconditional generations using GPT2Large (774M params) as the evaluation model. ADLM significantly outperforms prior masked and diffusion language models under comparable sampling configurations. Notably, it surpasses Plaid (Gulrajani & Hashimoto, 2023) while using only ∼20% of the parameters, and nearly matches the performance of GPT2-medium despite having ∼50M fewer parameters.
+    </p>    
+    <img class="summary-img" src="./data/adlm-size-v-perf.png" style="width:80%;"> 
+    <br>
+  </div>
+
+
+<div class="content">
+  <h2>BibTeX</h2>
+  <pre style="background-color:#f8f8f8; padding:1em; border-left:4px solid #999; font-size:0.9em;">
+    @article{rout2025aps,
+      title     = {Test-Time Anchoring for Discrete Diffusion Posterior Sampling},
+      author    = {Rout, L. and Lugmayr, A. and Jafarian, Y. and Varadharajn, S. and Caramanis, C. and Shakkottai, S. and Shlizerman, I.},
+      booktitle = {arXiv preprint},
+      year      = {2025}
+    }
+  </pre>
+</div>
+
+
+<div class="content" id="acknowledgements">
+  <p><span style="font-weight: bold;">Acknowledgements:</span>
+    The authors thank the Google's ARML Commerce team for their support and for providing a stimulating environment for this research, which was conducted while the first author was an intern at Google. We are also grateful to Akash Sengupta and Yingwei Li for their insightful discussions during the early stages of this project. This research has been partially supported by NSF Grants 2112471, 2505865 and the UT Austin Machine Learning Lab.
+  </p>
+</div>
+</body>
+
+
+</html>

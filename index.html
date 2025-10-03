@@ -27,8 +27,8 @@
   <font size="+2">
     <p style="text-align: center;">
       <a href="./data/aps.pdf" target="_blank">[Paper]</a> &nbsp;&nbsp;&nbsp;&nbsp;
-      <a href="" target="_blank">[ArXiv]</a> &nbsp;&nbsp;&nbsp;&nbsp;
-      <a href="https://github.com/LituRout/APS" target="_blank">[Code (Coming Soon)]</a>&nbsp;&nbsp;&nbsp;&nbsp;
+      <a href="https://arxiv.org/abs/2510.02291" target="_blank">[ArXiv]</a> &nbsp;&nbsp;&nbsp;&nbsp;
+      <a href="https://github.com/LituRout/APS" target="_blank">[Code]</a>&nbsp;&nbsp;&nbsp;&nbsp;
     </p>
   </font>
   <img src="./data/teaser-v1.png" class="teaser-gif" style="width:100%;">    
@@ -47,7 +47,7 @@
 
 <div class="content">
     <h2>Contributions</h2>
-    <ul>      
+    <ul>
       <li>
       <span style="font-weight: bold;">Theoretical results</span>: we derive (i) a training upper bound, LDDPS (Theorem 3.1), that integrates measurements into the reverse diffusion process, and (ii) a test-time bound, LAPS (Theorem 3.2), that reuses a pretrained denoiser without expensive retraining per downstream task (§3).</li>
       <p></p>
@@ -62,7 +62,7 @@
       <li>
         <span style="font-weight: bold;">Extensive experiments</span>: comprehensive evaluation on linear (super resolution, Gaussian deblurring, inpainting, motion deblur) and nonlinear (HDR, nonlinear deblurring) inverse problems on FFHQ and ImageNet, where our method achieves up to 35.82% LPIPS and 10.94% PSNR gains on ImageNet super resolution (4×), and 31.36% LPIPS and 7.05% PSNR gains on FFHQ, over the prior state-of-the-art discrete sampler. We further demonstrate training-free stylization enabled by our discrete posterior sampler, highlighting flexibility beyond inverse problems (§4).
       </li>
-    </ul>        
+    </ul>
     </div>
 
   <div id="results" class="content">
@@ -75,6 +75,9 @@
   <p>
     For retraining, one can minimize <span style="font-weight: bold;">L<sub>DDPS</sub>(x, y; ϕ)</span> with respect to <span style="font-weight: bold;">ϕ</span> to obtain a discrete posterior sampler. In practice, however, retraining a large-scale foundation model per task is often infeasible due to excessive compute requirement and lack of training data. We therefore focus on the training-free case.</p>
   <img class="summary-img" src="./data/theorem-aps.png" style="width:70%;">
+  <p>
+    <span style="font-weight: bold;">Theorem 3.2</span> shows how to perform efficient test-time training using a lightweight network while not changing the weights of the base foundation model.
+  </p>
   <div style="margin-top: 1em; padding: 0.5em; background-color: #fef3c7; border-left: 5px solid #f59e0b;">
     <strong style="font-size: 1.1em;">
       <p>
@@ -82,41 +85,120 @@
       </p>
     </strong>
     </div>
+    <h3>Visual Illustration</h3>
+    <p>
+      To better understand the impact of our algorithmic innovations, we conduct a systematic ablation study on ImageNet SR (4×), as shown below. Our analysis focuses on three core design choices: (i) standard remasking, which highlights the limitations of confidence-based token selection under the prior; (ii) quantized expectation, which addresses sampling bias and improves measurement consistency; and (iii) anchored remasking, which preserves informative tokens identified by optimization while suppressing spurious high-confidence background tokens. Together, these ablations disentangle the contributions of each component, providing both theoretical insight and qualitative evidence (Figure 6  in the paper) into how APS achieves stable and measurement-consistent posterior sampling.
+    </p>
+    <img class="summary-img" src="./data/super_resolution_4x.png" style="width:100%;"> 
+    <h3>Standard Remasking</h3>
+    <p>
+      The standard remasking process favors unmasking the most confident tokens under the prior distribution x<sub>θ</sub>(z<sub>t</sub>).
+      In language generation, this corresponds to unmasking frequent, low-information tokens (e.g., articles or conjunctions) (<a href="https://anchored-diffusion-llm.github.io/" target="_blank">Rout et al., 2025</a>). Analogously in images, the model tends to unmask background regions first, since they dominate training statistics and are easier to predict. As a result, informative foreground tokens remain masked until late in the process that limits semantic guidance.
+    </p>
+    <p>
+    Qualitatively, the figure below illustrates this phenomenon using the discrete diffusion foundation model MMaDA. While the model confidently unmasks background tokens early, the salient object is revealed only much later, highlighting the limitation of standard remasking for posterior sampling.
+    </p>
+    <img class="summary-img" src="./data/standard_remasking.png" style="width:100%;"> 
     <h3>Quantized Expectation</h3>
     <p>
+      Standard remasking suffers from two key issues: (i) sampling bias, and (ii) independent token-wise confidence. When sampling tokens directly from the unconditional distribution x<sub>θ</sub>(z<sub>t</sub>), the model may pick unrelated or spurious tokens, which—once unmasked—remain fixed in all future steps. This introduces inconsistency and often locks the model into poor generations.
     </p>
+    <p>
+      To address this, we propose quantized expectation (§3.2.1). Instead of sampling, we tilt the unconditional distribution x<sub>θ</sub>(z<sub>t</sub>) towards the measurement likelihood, obtaining an approximate posterior x<sub>φ</sub>(z<sub>t</sub>). We then optimize in the span of codebook embeddings by treating the tilted probabilities as coefficients in a linear combination and passing their expectation through the decoder using a straight-through estimator. The resulting embedding is then quantized back to the nearest valid token. This procedure implicitly maximizes the measurement likelihood, avoids sampling noise, and enables the discovery of tokens with zero prior probability mass but strong measurement consistency–leading to a better posterior sample. 
+    </p>
+    <p>
+      We treat such tokens as “anchor tokens,” since they minimize reconstruction error and provide critical guidance under the measurement operator. As shown in the figure below (APS-I), quantized expectation corrects sampling bias and yields reconstructions that remain consistent with observations throughout the denoising trajectory.
+    </p>
+    <img class="summary-img" src="./data/standard_remasking-time-label.png" style="width:100%;"> 
+    <img class="summary-img" src="./data/quantized_expectation.png" style="width:100%;"> 
     <h3>Anchored Remasking</h3>
     <p>
-
+      A limitation of confidence-based remasking under the prior is that anchor tokens, obtained through our optimization procedure, may receive near-zero probability under x<sub>θ</sub>(z<sub>t</sub>). As a result, the model would discard these informative tokens in favor of background tokens, which the prior predicts with high confidence. This reintroduces the very bias we aim to avoid using quantized expectation. 
     </p>
+    <p>
+    To address this, we compute token confidence using the posterior estimate x<sub>φ</sub>(z<sub>t</sub>) rather than the unconditional prior. In this way, anchor tokens identified via quantized expectation are preserved, while low-likelihood background tokens are remasked. Qualitatively, this effect is evident at t = 6/15 in the figure below (APS-II): unlike the standard prior-based strategy (second row), which prematurely unmasks background pixels, our approach commits to anchor tokens aligned with the bird’s body. This ensures that the background (blue sky in the measurement) is correctly downweighted, as it is inconsistent with the prior white background generated by x<sub>θ</sub>. Subsequent steps therefore refine the image conditioned on these anchor tokens, reducing conditional entropy and producing reconstructions that remain faithful to the measurements.
+    </p>
+    <img class="summary-img" src="./data/standard_remasking-time-label.png" style="width:100%;"> 
+    <img class="summary-img" src="./data/anchored_remasking.png" style="width:100%;">
   </div>
 
   <div class="content">        
     <h2>Experiments: Test-Time Anchored Posterior Sampling</h2>
     <h3>Results on Linear Inverse Problems</h3>
     <p>
-      Test perplexities (PPL↓) on LM1B and OWT. †Reported in (Sahoo et al., 2024). <strong>Bold: Best diffusion method</strong>. We retrain AR and MDLM to match performance reported in original papers. Our method outperforms previous diffusion language models using the same number of training tokens.          
+      <span style="font-weight: bold;">Qualitative results</span> on FFHQ and ImageNet for SR (4×) and Gaussian deblur. Compared to DPS and G2D2, APS yields better results with sharper texture and refined facial features. For instance, in the third row, APS reconstructs fine strands of the white and brown dog’s fur.
     </p>    
-    <img class="summary-img" src="./data/adlm-gen-lm1b-owt.png" style="width:85%;"> 
+    <img class="summary-img" src="./data/ffhq-imagenet-sr-gb.png" style="width:100%;"> 
+    <p>
+      <span style="font-weight: bold;">Quantitative results</span> on Super Resolution (4×) and Gaussian Deblurring. APS consistently outperforms prior discrete samplers (G2D2, SGDD, and SVDD-PM) and remains competitive with strong continuous diffusion baselines (shaded gray).
+    </p>    
+    <img class="summary-img" src="./data/ffhq-imagenet-sr-gb-quant.png" style="width:80%;"> 
     <br>
     <h3>Results on General Inverse Problems</h3>
     <p>
-      GPT2-Large perplexities (PPL; ↓) on OWT (524B tokens). We evaluate ADLM with the locked-in and remasking samplers each with 1000 steps.          
+      <span style="font-weight: bold;">Qualitative results</span> on FFHQ for linear (top row) and nonlinear (bottom row) inverse problems. APS and APS-L recover high-fidelity images from severely degraded inputs.
     </p>    
-    <img class="summary-img" src="./data/adlm-gen-text-quality.png" style="width:30%;"> 
+    <img class="summary-img" src="./data/ffhq-gen-inv.png" style="width:100%;"> 
+    <p>
+      <span style="font-weight: bold;">Quantitative results</span>  on general inverse problems. We report results on two additional linear (random inpainting, motion deblurring) and nonlinear (HDR, nonlinear blur) tasks. Since G2D2 and SGDD do not evaluate on these tasks, we compare our discrete sampler against representative continuous baselines: DPS (pixel-space) and PSLD (latent-space).
+    </p>    
+    <img class="summary-img" src="./data/ffhq-gen-inv-quant.png" style="width:80%;"> 
     <br>    
     <h3>Results on Reference-Based Stylization</h3>
     <p>
-      Zero-shot validation perplexities (↓) of models trained on 524B tokens from OWT. ADLM achieves a new state-of-the-art among diffusion language models and outperforms autoregressive (AR) models on three benchmarks: Lambada, PubMed, and ArXiv. All models use 1024 NFEs.          
+      <span style="font-weight: bold;">Qualitative results</span> on stylization. For each case, our APS algorithm conditions on a single reference style image together with a text prompt to generate the stylized output images. The prompt follows the template: “Generate an image in [style] style. A [class], high detail, photorealistic.” Here, [style] denotes the reference style (e.g., Celestial Artwork), and [class] corresponds to the label shown below (e.g., Carousel).
     </p>    
-    <img class="summary-img" src="./data/adlm-zero-shot-eval.png" style="width:75%;"> 
-    <br>    
+    <img class="summary-img" src="./data/ref-based-stylization.png" style="width:100%;"> 
+    <img class="summary-img" src="./data/ref-based-stylization-supp.png" style="width:100%;"> 
+    <p>
+      <span style="font-weight: bold;">Quantitative results</span> demonstrating that our posterior sampler unlocks stylization capabilities absent in the base model. Notably, APS also surpasses continuous baselines such as IP-Adapter (Ye et al., 2023) and StyleAligned (Hertz et al., 2023) on ImageReward and CLIP-T, despite relying on a weaker generative prior (Yang et al., 2025).
+    </p>    
+    <img class="summary-img" src="./data/ref-based-stylization-quant.png" style="width:40%;">
+    <p>
+      <span style="font-weight: bold;">Qualitative comparison</span> on reference-based stylization. We compare our full method (MMaDA + APS) with the base model (MMaDA) and several state-of-the-art contnuous diffusion methods across four style-prompt pairs. For each row, all methods use the same Style Reference image (left) and text prompt (shown below the images).
+    </p>
+    <img class="summary-img" src="./data/ref-based-stylization-comp.png" style="width:100%;">
+    <br>
     <h3>Results on Text-Guided Block Inpainting</h3>
     <p>
-      Generative perplexities evaluated over 1024 unconditional generations using GPT2Large (774M params) as the evaluation model. ADLM significantly outperforms prior masked and diffusion language models under comparable sampling configurations. Notably, it surpasses Plaid (Gulrajani & Hashimoto, 2023) while using only ∼20% of the parameters, and nearly matches the performance of GPT2-medium despite having ∼50M fewer parameters.
+      Text-guided block inpainting on high-resolution (1024×512) images. Our approach (APS) generates prompt-aligned garment completions compared to prior methods. Red boxes highlight prompt-misalignment in competing approaches. In the first row, the prompt specifies an untucked, oversized T-shirt with vibrant colors—details missed by Imagen 3, Flux, and HD-Painter. In the second row, our approach correctly buttons the shirt all the way to the top.
     </p>    
-    <img class="summary-img" src="./data/adlm-size-v-perf.png" style="width:80%;"> 
+    <img class="summary-img" src="./data/large-bip.png" style="width:100%;">
     <br>
+  </div>
+
+  <div class="content">        
+    <h2>Sampling Efficiency: Continuous vs Discrete Diffusion</h2>
+    <p>
+      <span style="font-weight: bold;">Quantitative results</span> on sampling efficiency of continuous and discrete samplers.PDM/LDM denote pixel-/latent-space continuous diffusion models, respectively; VQ-Diffusion and MMaDA are discrete diffusion models. Rows shaded gray report runtimes on a single NVIDIA A6000 GPU copied from G2D2 (Murata et al., 2024); rows shaded orange are measured by us on a single NVIDIA A100 GPU.
+    </p>    
+    <img class="summary-img" src="./data/continuous-vs-discrete.png" style="width:70%;"> 
+    <br>
+    <span style="font-weight: bold;">Comparison against continuous (pixel/latent) diffusion:</span>
+    <div style="margin-top: 0.5em; padding: 0.5em; background-color: #f3f4f6; border-left: 5px solid #6b7280;">
+    <strong style="font-size: 1.1em;">
+      <p>
+        Pixel-space samplers (DPS, DDRM) either require very long Markov chains (e.g., DPS: 1000 steps, 277s) or sacrifice quality when shortened; latent-space samplers (PSLD, ReSample) still need 500–1000 steps and hundreds of seconds per image at 256×256–512×512 resolutions (e.g., PSLD: 738s at 512 × 512).
+      </p>
+    </strong>
+    </div>
+    <br>
+    <span style="font-weight: bold;">Comparison against discrete diffusion:</span>
+    <div style="margin-top: 0.5em; padding: 0.5em; background-color: #f3f4f6; border-left: 5px solid #6b7280;">
+    <strong style="font-size: 1.1em;">
+      <p>
+        Under the same budget, APS matches or improves G2D2’s runtime while yielding better reconstructions: at 256 × 256 with VQ-Diffusion both methods use 100 steps, but APS yields higher quality (see Table 5); with the stronger MMaDA prior at 512×512, APS achieves consistently better LPIPS/PSNR as discussed in §4. Moreover, our 1024×1024 configuration (APS-L) demonstrates better test-time scaling behavior compared continuous diffusion: we keep 15 steps and still obtain substantial quality gains at reasonable cost (484s).
+      </p>
+    </strong>
+    </div>
+    <br>
+    <div style="margin-top: 0.5em; padding: 0.5em; background-color: #fef3c7; border-left: 5px solid #f59e0b;">
+    <strong style="font-size: 1.1em;">
+      <p>
+        Importantly, continuous methods struggle to match this performance without prohibitive runtimes. PSLD (Rout et al., 2023) already takes nearly 12 minutes to process a single 512×512 image and more complex methods such as P2L (Chung et al., 2024) take around 30 minutes for the same resolution. Therefore, training-free posterior sampling using continuous diffusion at very high resolutions such as 1024×1024 becomes computationally prohibitive. In contrast, discrete diffusion shows better scaling behavior. 
+      </p>
+    </strong>
+    </div>
   </div>
 
 
@@ -128,6 +210,7 @@
       author    = {Rout, L. and Lugmayr, A. and Jafarian, Y. and Varadharajn, S. and Caramanis, C. and Shakkottai, S. and Shlizerman, I.},
       booktitle = {arXiv preprint},
       year      = {2025}
+      url       = {https://arxiv.org/pdf/2510.02291}
     }
   </pre>
 </div>

@@ -34,7 +34,7 @@ APS achieves **state-of-the-art performance among discrete samplers** and remain
 
 ### Linear Inverse Problems (FFHQ, ImageNet)
 
-APS produces sharper textures and refined details compared to G2D2 and DPS.
+APS produces sharper textures and refined details compared to discrete samplers.
 
 <img src="./data/ffhq-imagenet-sr-gb.png" width="100%">
 

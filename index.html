@@ -7,6 +7,53 @@
 </head>
 
 <body>
+<!-- Put this <style> block once in your <head> or before the closing </body> -->
+<style>
+  .video-section { 
+    text-align: center; 
+    margin: 28px 0 18px; 
+  }
+
+  .video-card {
+    display: inline-block;
+    width: min(900px, 100%);
+    border-radius: 14px;
+    border: 2px solid #BF5700; /* Burnt orange border */
+    box-shadow: 0 6px 24px rgba(0,0,0,0.12);
+    overflow: hidden;
+    background: #fff; /* page background */
+  }
+
+  .video-card video {
+    width: 100%;
+    height: auto;
+    display: block;
+    object-fit: contain; /* keeps full video visible */
+    background: #fff;
+    border: none;
+    outline: none;
+  }
+
+  .video-caption {
+    max-width: min(900px, 100%);
+    margin: 12px auto 0;
+    font-size: 16px;
+    line-height: 1.6;
+    color: #000; /* match rest of page text */
+    text-align: justify;
+    font-style: normal;
+  }
+
+  @media (hover:hover) {
+    .video-card:hover {
+      box-shadow:
+        0 10px 28px rgba(0,0,0,0.18),
+        0 3px 10px rgba(0,0,0,0.12);
+      border-color: #A64A00; /* slightly darker orange on hover */
+    }
+  }
+</style>
+
 <div class="content">
   <h1><strong>Test-Time Anchoring for Discrete Diffusion Posterior Sampling</strong></h1>
   <!-- <h2 style="text-align:center;">CVPR 2024</h2> -->
@@ -31,10 +78,45 @@
       <a href="https://github.com/LituRout/APS" target="_blank">[Code]</a>&nbsp;&nbsp;&nbsp;&nbsp;
     </p>
   </font>
-  <img src="./data/teaser-v1.png" class="teaser-gif" style="width:100%;">    
-  <p>
-    We introduce <span style="font-weight: bold;">Anchored Posterior Sampling (APS)</span> for masked diffusion foundation models, built on two key innovations: (i) quantized expectation, which provides gradient-like guidance for discrete diffusion with purely discrete embedding space, and (ii) anchored remasking, which enables adaptive decoding during inference. Our method supports a variety of linear and nonlinear image restoration tasks (left three columns), as well as mask-based garment styling and reference-guided style transfer (last column).
-  </p>
+  <!-- Demo Video -->
+  <div class="video-section">
+    <div class="video-card">
+      <video
+        controls
+        autoplay
+        loop
+        muted
+        playsinline
+        preload="metadata"
+        controlslist="nodownload"
+        poster="./data/teaser-v1.png"
+      >
+        <source src="./data/aps-slow-pause-final.mp4" type="video/mp4">
+        Your browser does not support the video tag.
+      </video>
+    </div>
+    <p class="video-caption">
+    <span style="font-weight: bold;">APS in action — enabling guidance in discrete diffusion models through Anchored Posterior Sampling (APS).</span>
+    Standard discrete diffusion models are text-to-image generative models that unmask tokens based on confidence.
+    In the visualization on the left, tokens corresponding to flat, low-structure background regions are unmasked first,
+    since the model is most confident in predicting them. However, this confidence-based strategy ignores structural
+    information, causing important regions to remain masked until late in the process.
+    <br><br>
+    In contrast, APS aims to unmask <span style="font-weight: bold;">anchor tokens</span>—those that best explain the noisy measurement shown in the middle.
+    These tokens are identified by searching in the span of the codebook basis vectors and optimizing their coefficients
+    to minimize measurement error. The resulting coefficients define a <span style="font-weight: bold;">tilted distribution</span> that approximates the posterior.
+    Anchor tokens are then chosen as the quantized expectation under this tilted distribution, while high-entropy tokens are remasked.
+    <br><br>
+    This approach ensures that APS unmasks structurally meaningful tokens early—such as the white pixels representing the
+    bird’s body in the rightmost visualization—leading to consistent and accurate reconstructions.
+    Importantly, APS demonstrates training-free guidance for discrete diffusion foundation models, unlocking the following applications widely using continuous diffusion.
+    </p>
+  </div>
+  <h3>Demonstrated Applications</h3>
+    <img src="./data/teaser-v1.png" class="teaser-gif" style="width:100%;">
+    <p>
+      We introduce <span style="font-weight: bold;">Anchored Posterior Sampling (APS)</span> for masked diffusion foundation models, built on two key innovations: (i) quantized expectation, which provides gradient-like guidance for discrete diffusion with purely discrete embedding space, and (ii) anchored remasking, which enables adaptive decoding during inference. Our method supports a variety of linear and nonlinear image restoration tasks (left three columns), as well as mask-based garment styling and reference-guided style transfer (last column).
+    </p>
 </div>
 
 
